@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -5,6 +7,9 @@
 #include <unordered_map>
 #include <vector>
 #include <algorithm>
+#include <random>
+
+#include <torch/torch.h>
 
 
 namespace tokenizer {
@@ -37,7 +42,25 @@ namespace tokenizer {
         }
         return decoded;
     }
+}
 
+namespace preprocessing{
+
+    void split_dataset(const float data_split_ratio,
+                       const torch::Tensor& data,
+                       torch::Tensor& train_data,
+                       torch::Tensor& validation_data){
+        
+        int n_train = static_cast<int>(data_split_ratio * data.size(0));
+        int n_val = data.size(0) - static_cast<int>(data_split_ratio * data.size(0));
+
+        std::vector<torch::Tensor> splits = torch::split(data, {n_train, n_val}, 0);
+
+        train_data = splits[0];
+        validation_data = splits[1];
+
+        return;
+    }
 }
 
 inline void data_parser(const std::string &data_path){
@@ -76,6 +99,17 @@ inline void data_parser(const std::string &data_path){
     std::unordered_map<char, int> stoi;
     std::unordered_map<int, char> itos;
     tokenizer::createMappings(chars, stoi, itos);
+    std::vector<int> encoded_text = tokenizer::encode(text, stoi);
+    torch::Tensor data = torch::tensor(encoded_text, torch::dtype(torch::kInt64));
+    torch::Tensor train_data, val_data;
+    preprocessing::split_dataset(0.9, data, train_data, val_data);
+
+    std::cout<<train_data.sizes()<<std::endl;
+    std::cout<<val_data.sizes()<<std::endl;
+    std::cout<<val_data<<std::endl;
+
+    // Output the tensor
+    std::cout << "Encoded tensor size: " << data.sizes() << std::endl;
 
     // Example
     std::string example_string = "hii there";
