@@ -44,7 +44,7 @@ namespace tokenizer {
     }
 }
 
-namespace preprocessing{
+namespace preprocessing {
 
     void split_dataset(const float data_split_ratio,
                        const torch::Tensor& data,
@@ -63,7 +63,12 @@ namespace preprocessing{
     }
 }
 
-inline void data_parser(const std::string &data_path){
+
+// Read the data from `data_path`, then encode the text data to the current encoding scheme.
+// Split the encoded data into `train_data` and `val_data`.
+inline void data_parser(const std::string &data_path,
+                        torch::Tensor& train_data,
+                        torch::Tensor& val_data){
 
     // Read the content of the file
     std::ifstream file(data_path);
@@ -101,27 +106,7 @@ inline void data_parser(const std::string &data_path){
     tokenizer::createMappings(chars, stoi, itos);
     std::vector<int> encoded_text = tokenizer::encode(text, stoi);
     torch::Tensor data = torch::tensor(encoded_text, torch::dtype(torch::kInt64));
-    torch::Tensor train_data, val_data;
+    
     preprocessing::split_dataset(0.9, data, train_data, val_data);
 
-    std::cout<<train_data.sizes()<<std::endl;
-    std::cout<<val_data.sizes()<<std::endl;
-    std::cout<<val_data<<std::endl;
-
-    // Output the tensor
-    std::cout << "Encoded tensor size: " << data.sizes() << std::endl;
-
-    // Example
-    std::string example_string = "hii there";
-    std::vector<int> encoded = tokenizer::encode(example_string, stoi);
-    std::string decoded = tokenizer::decode(encoded, itos);
-
-     // Output the results
-    std::cout << "Original string: " << example_string << std::endl;
-    std::cout << "Encoded: ";
-    for (int i : encoded) {
-        std::cout << i << " ";
-    }
-    std::cout << std::endl;
-    std::cout << "Decoded string: " << decoded << std::endl;
 }

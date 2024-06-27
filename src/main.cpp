@@ -7,6 +7,7 @@
 
 int main() {
     
-    data_parser("../data/input.txt");
+    torch::Tensor train_data, val_data;
+    data_parser("../data/input.txt", train_data, val_data);
     return 0;
 }
