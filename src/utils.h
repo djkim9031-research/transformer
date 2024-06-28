@@ -11,6 +11,8 @@
 
 #include <torch/torch.h>
 
+#include "bigram.h"
+
 
 namespace tokenizer {
     // Function to create stoi, itos mappings
@@ -51,7 +53,8 @@ namespace preprocessing {
     // the unique char in the dataset).
     std::string data_parser(const std::string& data_path,
                             std::unordered_map<char, int>& stoi,
-                            std::unordered_map<int, char>& itos){
+                            std::unordered_map<int, char>& itos,
+                            int& vocab_size){
         
         // Read the content of the file
         std::ifstream file(data_path);
@@ -72,6 +75,9 @@ namespace preprocessing {
 
         // Create stoi, itos mappings
         tokenizer::createMappings(chars, stoi, itos);
+
+        // Get the vocab size of the dataset
+        vocab_size = chars.size();
 
         return text;
     }
@@ -94,7 +100,7 @@ namespace preprocessing {
     }
 
     // Preprocessing function - creating batches of dataset
-    void get_batch(const int batch_size,
+    void create_batch(const int batch_size,
                    const int context_win_size,
                    const torch::Tensor& data,
                    const torch::Generator& gen,
@@ -124,7 +130,8 @@ inline void data_loader(const std::string &data_path){
     // Parse the data
     std::unordered_map<char, int> stoi;
     std::unordered_map<int, char> itos;
-    std::string text = preprocessing::data_parser(data_path, stoi, itos);
+    int vocab_size;
+    std::string text = preprocessing::data_parser(data_path, stoi, itos, vocab_size);
 
     // Encode the parsed data
     std::vector<int> encoded_text = tokenizer::encode(text, stoi);
@@ -137,18 +144,28 @@ inline void data_loader(const std::string &data_path){
     // Create batches of training and validation data.
     int batch_size = 4;
     int context_win_size = 8;
-    auto gen = at::detail::createCPUGenerator(42);
+    int seed_num = 42;
+    auto gen = at::detail::createCPUGenerator(seed_num);
     torch::Tensor xb, yb;
-    preprocessing::get_batch(batch_size, context_win_size, train_data, gen, xb, yb);
+    preprocessing::create_batch(batch_size, context_win_size, train_data, gen, xb, yb);
+    // Here, the xb and yb are of size [batch_size, context_win_size]
 
-    for(int b=0; b<batch_size; ++b){
-        for(int c=0; c<context_win_size; ++c){
-            torch::Tensor context = xb[b].slice(/*dim=*/0, /*start=*/0, /*end=*/c+1);
-            torch::Tensor target = yb[b][c];
-            std::cout<<"Input: "<<context<<std::endl;
-            std::cout<<"Target: "<<target<<std::endl;
+    BigramLanguageModel bigram(vocab_size, seed_num);
+    torch::Tensor nll;
+    auto logits = bigram.forward(xb, yb, nll);
+    // With embedding in the bigram model, the size of the logits = [batch_size, context_win_size, vocab_size]
+    
+
+    torch::Tensor test_inference = torch::zeros({1, 1}, torch::kInt64);
+    auto generated = bigram.generate(test_inference, 10);
+    std::cout<<generated<<std::endl;
+    
+    for(size_t b=0; b<generated.size(0); ++b){
+        std::vector<int> decoded_gen;
+        for(size_t c=0; c<generated.size(1); ++c){
+            decoded_gen.push_back(generated[b][c].item<int>());
         }
-        std::cout<<"___________________________"<<std::endl;
+        std::cout<<tokenizer::decode(decoded_gen, itos)<<std::endl;
     }
 
 }
