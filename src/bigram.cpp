@@ -39,8 +39,20 @@ namespace nn_models{
             optimizer.zero_grad();
             loss.backward();
             optimizer.step();
-
-            std::cout<<"[Step "<<step+1<<"] Loss = "<<loss.item<float>()<<std::endl;
+            
+            if(step % 1000 == 0){
+                std::cout<<"[Step "<<step<<"] Loss = "<<loss.item<float>()<<std::endl;
+            }
         }
+
+        // Inference on the trained model.
+        torch::Tensor init_data = torch::zeros({1, 1}, torch::kInt64);
+        auto inference_data = bigram.generate(init_data, 100);
+        std::vector<int> inference_data_vectorized;
+        for(size_t c=0; c<inference_data.size(1); ++c){
+            inference_data_vectorized.push_back(inference_data[0][c].item<int>());
+        }
+        std::cout<<"Given: "<<tokenizer::decode({init_data[0][0].item<int>()}, itos)<<std::endl;
+        std::cout<<"Generated: "<<tokenizer::decode(inference_data_vectorized, itos)<<std::endl;
     }
 }
