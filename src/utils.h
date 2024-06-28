@@ -11,14 +11,12 @@
 
 #include <torch/torch.h>
 
-#include "bigram.h"
-
 
 namespace tokenizer {
     // Function to create stoi, itos mappings
-    void createMappings(const std::vector<char>& chars,
-                        std::unordered_map<char, int>& stoi,
-                        std::unordered_map<int, char>& itos){
+    inline void create_mapping(const std::vector<char>& chars,
+                               std::unordered_map<char, int>& stoi,
+                               std::unordered_map<int, char>& itos){
         for(size_t i=0; i<chars.size(); ++i){
             stoi[chars[i]] = i;
             itos[i] = chars[i];
@@ -26,8 +24,8 @@ namespace tokenizer {
     }
 
     // Function to encode a string
-    std::vector<int> encode(const std::string& s, 
-                            const std::unordered_map<char, int> &stoi){
+    inline std::vector<int> encode(const std::string& s, 
+                                   const std::unordered_map<char, int> &stoi){
         std::vector<int> encoded;
         for(char c : s){
             encoded.push_back(stoi.at(c));
@@ -36,8 +34,8 @@ namespace tokenizer {
     }
 
     // Function to decode tokens to corresponding strings
-    std::string decode(const std::vector<int>& l,
-                       const std::unordered_map<int, char>& itos){
+    inline std::string decode(const std::vector<int>& l,
+                              const std::unordered_map<int, char>& itos){
         std::string decoded = "";
         for(int i : l){
             decoded += itos.at(i);
@@ -51,10 +49,10 @@ namespace preprocessing {
     // Preprocessing function - parse the data from the given .txt
     // and create the char-to-int, int-to-char mappings (which maps 
     // the unique char in the dataset).
-    std::string data_parser(const std::string& data_path,
-                            std::unordered_map<char, int>& stoi,
-                            std::unordered_map<int, char>& itos,
-                            int& vocab_size){
+    inline std::string data_parser(const std::string& data_path,
+                                   std::unordered_map<char, int>& stoi,
+                                   std::unordered_map<int, char>& itos,
+                                   int& vocab_size){
         
         // Read the content of the file
         std::ifstream file(data_path);
@@ -74,7 +72,7 @@ namespace preprocessing {
         std::sort(chars.begin(), chars.end());
 
         // Create stoi, itos mappings
-        tokenizer::createMappings(chars, stoi, itos);
+        tokenizer::create_mapping(chars, stoi, itos);
 
         // Get the vocab size of the dataset
         vocab_size = chars.size();
@@ -83,10 +81,10 @@ namespace preprocessing {
     }
 
     // Preprocessing function - splitting given data into train/val dataset
-    void split_dataset(const float data_split_ratio,
-                       const torch::Tensor& data,
-                       torch::Tensor& train_data,
-                       torch::Tensor& val_data){
+    inline void split_dataset(const float data_split_ratio,
+                              const torch::Tensor& data,
+                              torch::Tensor& train_data,
+                              torch::Tensor& val_data){
         
         int n_train = static_cast<int>(data_split_ratio * data.size(0));
         int n_val = data.size(0) - static_cast<int>(data_split_ratio * data.size(0));
@@ -100,14 +98,13 @@ namespace preprocessing {
     }
 
     // Preprocessing function - creating batches of dataset
-    void create_batch(const int batch_size,
-                   const int context_win_size,
-                   const torch::Tensor& data,
-                   const torch::Generator& gen,
-                   torch::Tensor& batch_input,
-                   torch::Tensor& batch_output){
+    inline void create_batch(const int batch_size,
+                             const int context_win_size,
+                             const torch::Tensor& data,
+                             torch::Tensor& batch_input,
+                             torch::Tensor& batch_output){
         
-        auto idx = torch::randint(0, data.size(0) - context_win_size, {batch_size}, gen, torch::kInt64);
+        auto idx = torch::randint(0, data.size(0) - context_win_size, {batch_size}, torch::kInt64);
 
         // Extract the tensors at the selected index for each batch
         std::vector<torch::Tensor> x_vec, y_vec;
@@ -123,49 +120,3 @@ namespace preprocessing {
     }
 }
 
-
-// Preparing the dataset for nn model.
-inline void data_loader(const std::string &data_path){
-
-    // Parse the data
-    std::unordered_map<char, int> stoi;
-    std::unordered_map<int, char> itos;
-    int vocab_size;
-    std::string text = preprocessing::data_parser(data_path, stoi, itos, vocab_size);
-
-    // Encode the parsed data
-    std::vector<int> encoded_text = tokenizer::encode(text, stoi);
-    torch::Tensor data = torch::tensor(encoded_text, torch::dtype(torch::kInt64));
-    
-    // Splitting the encoded data to train_data, and val_data
-    torch::Tensor train_data, val_data;
-    preprocessing::split_dataset(0.9, data, train_data, val_data);
-
-    // Create batches of training and validation data.
-    int batch_size = 4;
-    int context_win_size = 8;
-    int seed_num = 42;
-    auto gen = at::detail::createCPUGenerator(seed_num);
-    torch::Tensor xb, yb;
-    preprocessing::create_batch(batch_size, context_win_size, train_data, gen, xb, yb);
-    // Here, the xb and yb are of size [batch_size, context_win_size]
-
-    BigramLanguageModel bigram(vocab_size, seed_num);
-    torch::Tensor nll;
-    auto logits = bigram.forward(xb, yb, nll);
-    // With embedding in the bigram model, the size of the logits = [batch_size, context_win_size, vocab_size]
-    
-
-    torch::Tensor test_inference = torch::zeros({1, 1}, torch::kInt64);
-    auto generated = bigram.generate(test_inference, 10);
-    std::cout<<generated<<std::endl;
-    
-    for(size_t b=0; b<generated.size(0); ++b){
-        std::vector<int> decoded_gen;
-        for(size_t c=0; c<generated.size(1); ++c){
-            decoded_gen.push_back(generated[b][c].item<int>());
-        }
-        std::cout<<tokenizer::decode(decoded_gen, itos)<<std::endl;
-    }
-
-}
