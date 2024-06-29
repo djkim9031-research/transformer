@@ -8,9 +8,8 @@
 
 int main() {
 
-    nn_models::bigram_training_pipeline("../data/input.txt",
-                                        32, 8, 42, 0.9);
-
+    nn_models::transformer_training_pipeline("../data/input.txt",
+                                             32, 8, 42, 0.9);
 
     return 0;
 }
