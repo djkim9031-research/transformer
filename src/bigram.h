@@ -6,30 +6,30 @@
 
 namespace nn_models{
 
-    class BigramLanguageModel : public torch::nn::Module{
+    class BigramLanguageModel : public torch::nn::Module { 
         public:
             torch::nn::Embedding token_embedding_table{nullptr};
             torch::nn::Embedding position_embedding_table{nullptr};
             torch::nn::Linear linear_head{nullptr};
             int m_context_win_size;
 
-            BigramLanguageModel(int vocab_size, int context_win_size, int n_embedding, int seed_num)
+            BigramLanguageModel(int vocab_size, int context_win_size, int embedding_dims, int seed_num)
             : m_context_win_size(context_win_size) {
                 torch::manual_seed(seed_num);
-                token_embedding_table = register_module("token_embedding_table", torch::nn::Embedding(vocab_size, n_embedding));
-                position_embedding_table = register_module("position_embedding_table", torch::nn::Embedding(context_win_size, n_embedding));
-                linear_head = register_module("linear_head", torch::nn::Linear(n_embedding, vocab_size));
+                token_embedding_table = register_module("token_embedding_table", torch::nn::Embedding(vocab_size, embedding_dims));
+                position_embedding_table = register_module("position_embedding_table", torch::nn::Embedding(context_win_size, embedding_dims));
+                linear_head = register_module("linear_head", torch::nn::Linear(embedding_dims, vocab_size));
             }
 
             torch::Tensor forward(torch::Tensor &x, torch::Tensor &y, torch::Tensor &nll){
                 int B = x.size(0);
                 int T = x.size(1);
 
-                auto token_embeddings = token_embedding_table->forward(x); // Shape B, T, C1 (batch, context, n_embdding)
+                auto token_embeddings = token_embedding_table->forward(x); // Shape B, T, C1 (batch, context, embedding_dims)
                 auto positions = torch::arange(0, T, torch::kLong); // Shape T (context_win_size)
-                auto pos_embeddings = position_embedding_table->forward(positions); // shape T, C1 (context, n_embedding)
+                auto pos_embeddings = position_embedding_table->forward(positions); // shape T, C1 (context, embedding_dims)
                 
-                auto embedding_vectors = token_embeddings + pos_embeddings; // B, T, C1 (batch, context, n_embdding)
+                auto embedding_vectors = token_embeddings + pos_embeddings; // B, T, C1 (batch, context, embedding_dims)
                 auto logits = linear_head->forward(embedding_vectors); // Shape B, T, C2 (batch, context, vocab_size)
                 if (y.size(0) > 0){
                     int B = logits.size(0);
