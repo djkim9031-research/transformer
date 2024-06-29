@@ -44,14 +44,11 @@ namespace nn_models{
             torch::Tensor generate(const torch::Tensor &x, const int max_new_tokens, const int model_context_win_size){
                 // Input x is of size [B, T] 
                 torch::Tensor generated = x.clone();
-                torch::Tensor curr_tokens = x.clone();
                 torch::Tensor not_used = torch::Tensor();
 
                 for(size_t i=0; i<max_new_tokens; ++i){
-                    int T = curr_tokens.size(1);
-                    if(T > model_context_win_size){
-                        curr_tokens = curr_tokens.slice(1, 1, T);
-                    }
+
+                    torch::Tensor curr_tokens = generated.slice(1, -model_context_win_size);
 
                     // Get the embedding logits [B, T, C]
                     auto logits = forward(curr_tokens, not_used, not_used);
@@ -70,7 +67,6 @@ namespace nn_models{
 
                     // Append the sampled indices to the running sequence
                     // [B, curr_T+1]
-                    curr_tokens = torch::cat({curr_tokens, idx_next}, /*dim=*/1);
                     generated = torch::cat({generated, idx_next}, /*dim=*/1);
                 }
 
