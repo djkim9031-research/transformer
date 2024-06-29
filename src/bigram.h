@@ -65,10 +65,18 @@ namespace nn_models{
     // then tokenizing the dataset, splitting it to train/val tokenized data,
     // and train the model
     void bigram_training_pipeline(const std::string &data_path,
-                                  int batch_size,
-                                  int context_win_size,
-                                  int seed_num = 42,
-                                  float train_val_split_ratio = 0.9,
-                                  int max_training_step = 10000);
+                                  const int batch_size,
+                                  const int context_win_size,
+                                  const int seed_num = 42,
+                                  const float train_val_split_ratio = 0.9,
+                                  const int max_training_step = 10000);
+
+    // Loss evaluation logic, loss metrics against training and validataion data
+    // are evaluated during training to check if a model overfits to the data. 
+    float evaluation(BigramLanguageModel& model,
+                     const torch::Tensor& data,
+                     const int eval_iter,
+                     const int batch_size,
+                     const int context_win_size);
 }
 

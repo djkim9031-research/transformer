@@ -3,11 +3,11 @@
 namespace nn_models{
 
     void bigram_training_pipeline(const std::string &data_path,
-                                  int batch_size,
-                                  int context_win_size,
-                                  int seed_num,
-                                  float train_val_split_ratio,
-                                  int max_training_step){
+                                  const int batch_size,
+                                  const int context_win_size,
+                                  const int seed_num,
+                                  const float train_val_split_ratio,
+                                  const int max_training_step){
         
         // Parse the data
         std::unordered_map<char, int> stoi;
@@ -25,6 +25,8 @@ namespace nn_models{
 
         // Construct the bigram language model
         BigramLanguageModel bigram(vocab_size, seed_num);
+        //bigram.train();
+        //bigram.eval();
 
         // Training
         torch::optim::AdamW optimizer(bigram.parameters(), torch::optim::AdamWOptions(1e-3));
@@ -41,7 +43,11 @@ namespace nn_models{
             optimizer.step();
             
             if(step % 1000 == 0){
-                std::cout<<"[Step "<<step<<"] Loss = "<<loss.item<float>()<<std::endl;
+                std::cout<<"[Step "<<step<<"] Training mean loss = "
+                <<evaluation(bigram, train_data, 100, batch_size, context_win_size)<<std::endl;
+                std::cout<<"|__________ Evaluation mean loss = "
+                <<evaluation(bigram, val_data, 100, batch_size, context_win_size)<<std::endl;
+                std::cout<<"________________________________________________________"<<std::endl;
             }
         }
 
@@ -54,5 +60,29 @@ namespace nn_models{
         }
         std::cout<<"Given: "<<tokenizer::decode({init_data[0][0].item<int>()}, itos)<<std::endl;
         std::cout<<"Generated: "<<tokenizer::decode(inference_data_vectorized, itos)<<std::endl;
+    }
+
+    float evaluation(BigramLanguageModel& model,
+                     const torch::Tensor& data,
+                     const int eval_iter,
+                     const int batch_size,
+                     const int context_win_size){
+        model.eval(); // evaluation mode
+        torch::NoGradGuard no_grad; // Disable gradient calculation
+        
+        torch::Tensor losses = torch::zeros({eval_iter});
+        for(size_t k=0; k<eval_iter; ++k){
+            torch::Tensor xb, yb, nll;
+            preprocessing::create_batch(batch_size, context_win_size, data, xb, yb);
+            model.forward(xb, yb, nll);
+
+            losses[k] = nll.item<float>();
+        }
+
+        float mean_loss = losses.mean().item<float>();
+
+        model.train(); // back to train mode before returning.
+
+        return mean_loss;
     }
 }
