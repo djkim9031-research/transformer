@@ -13,6 +13,7 @@ namespace nn_models{
         std::unordered_map<char, int> stoi;
         std::unordered_map<int, char> itos;
         int vocab_size;
+        int embedding_dims = 32;
         std::string text = preprocessing::data_parser(data_path, stoi, itos, vocab_size);
         
         // Encode the parsed data
@@ -24,7 +25,7 @@ namespace nn_models{
         preprocessing::split_dataset(train_val_split_ratio, data, train_data, val_data);
 
         // Construct the bigram language model
-        BigramLanguageModel bigram(vocab_size, seed_num);
+        BigramLanguageModel bigram(vocab_size, embedding_dims, seed_num);
         //bigram.train();
         //bigram.eval();
 
