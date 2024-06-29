@@ -11,10 +11,8 @@ namespace nn_models{
             torch::nn::Embedding token_embedding_table{nullptr};
             torch::nn::Embedding position_embedding_table{nullptr};
             torch::nn::Linear linear_head{nullptr};
-            int m_context_win_size;
 
-            BigramLanguageModel(int vocab_size, int context_win_size, int embedding_dims, int seed_num)
-            : m_context_win_size(context_win_size) {
+            BigramLanguageModel(int vocab_size, int context_win_size, int embedding_dims, int seed_num){
                 torch::manual_seed(seed_num);
                 token_embedding_table = register_module("token_embedding_table", torch::nn::Embedding(vocab_size, embedding_dims));
                 position_embedding_table = register_module("position_embedding_table", torch::nn::Embedding(context_win_size, embedding_dims));
@@ -32,8 +30,6 @@ namespace nn_models{
                 auto embedding_vectors = token_embeddings + pos_embeddings; // B, T, C1 (batch, context, embedding_dims)
                 auto logits = linear_head->forward(embedding_vectors); // Shape B, T, C2 (batch, context, vocab_size)
                 if (y.size(0) > 0){
-                    int B = logits.size(0);
-                    int T = logits.size(1);
                     int C = logits.size(2);
 
                     logits = logits.view({B*T, C});
