@@ -9,17 +9,28 @@ namespace nn_models{
     class BigramLanguageModel : public torch::nn::Module{
         public:
             torch::nn::Embedding token_embedding_table{nullptr};
+            torch::nn::Embedding position_embedding_table{nullptr};
             torch::nn::Linear linear_head{nullptr};
+            int m_context_win_size;
 
-            BigramLanguageModel(int vocab_size, int n_embedding, int seed_num){
+            BigramLanguageModel(int vocab_size, int context_win_size, int n_embedding, int seed_num)
+            : m_context_win_size(context_win_size) {
                 torch::manual_seed(seed_num);
                 token_embedding_table = register_module("token_embedding_table", torch::nn::Embedding(vocab_size, n_embedding));
+                position_embedding_table = register_module("position_embedding_table", torch::nn::Embedding(context_win_size, n_embedding));
                 linear_head = register_module("linear_head", torch::nn::Linear(n_embedding, vocab_size));
             }
 
             torch::Tensor forward(torch::Tensor &x, torch::Tensor &y, torch::Tensor &nll){
-                auto token_embeddings = token_embedding_table->forward(x); // Shape B, T, C (batch, context, n_embdding)
-                auto logits = linear_head->forward(token_embeddings); // Shape B, T, C (batch, context, vocab_size)
+                int B = x.size(0);
+                int T = x.size(1);
+
+                auto token_embeddings = token_embedding_table->forward(x); // Shape B, T, C1 (batch, context, n_embdding)
+                auto positions = torch::arange(0, T, torch::kLong); // Shape T (context_win_size)
+                auto pos_embeddings = position_embedding_table->forward(positions); // shape T, C1 (context, n_embedding)
+                
+                auto embedding_vectors = token_embeddings + pos_embeddings; // B, T, C1 (batch, context, n_embdding)
+                auto logits = linear_head->forward(embedding_vectors); // Shape B, T, C2 (batch, context, vocab_size)
                 if (y.size(0) > 0){
                     int B = logits.size(0);
                     int T = logits.size(1);
@@ -34,13 +45,20 @@ namespace nn_models{
                 return logits;
             }
 
-            torch::Tensor generate(const torch::Tensor &x, const int max_new_tokens){
+            torch::Tensor generate(const torch::Tensor &x, const int max_new_tokens, const int model_context_win_size){
                 // Input x is of size [B, T] 
                 torch::Tensor generated = x.clone();
+                torch::Tensor curr_tokens = x.clone();
                 torch::Tensor not_used = torch::Tensor();
+
                 for(size_t i=0; i<max_new_tokens; ++i){
+                    int T = curr_tokens.size(1);
+                    if(T > model_context_win_size){
+                        curr_tokens = curr_tokens.slice(1, 1, T);
+                    }
+
                     // Get the embedding logits [B, T, C]
-                    auto logits = forward(generated, not_used, not_used);
+                    auto logits = forward(curr_tokens, not_used, not_used);
 
                     // Get the last token in the context window
                     // [B, 1, C]
@@ -56,6 +74,7 @@ namespace nn_models{
 
                     // Append the sampled indices to the running sequence
                     // [B, curr_T+1]
+                    curr_tokens = torch::cat({curr_tokens, idx_next}, /*dim=*/1);
                     generated = torch::cat({generated, idx_next}, /*dim=*/1);
                 }
 

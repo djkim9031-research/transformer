@@ -25,7 +25,7 @@ namespace nn_models{
         preprocessing::split_dataset(train_val_split_ratio, data, train_data, val_data);
 
         // Construct the bigram language model
-        BigramLanguageModel bigram(vocab_size, embedding_dims, seed_num);
+        BigramLanguageModel bigram(vocab_size, context_win_size, embedding_dims, seed_num);
         //bigram.train();
         //bigram.eval();
 
@@ -54,7 +54,7 @@ namespace nn_models{
 
         // Inference on the trained model.
         torch::Tensor init_data = torch::zeros({1, 1}, torch::kInt64);
-        auto inference_data = bigram.generate(init_data, 100);
+        auto inference_data = bigram.generate(init_data, 100, context_win_size);
         std::vector<int> inference_data_vectorized;
         for(size_t c=0; c<inference_data.size(1); ++c){
             inference_data_vectorized.push_back(inference_data[0][c].item<int>());
