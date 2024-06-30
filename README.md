@@ -18,6 +18,11 @@ Example 2: transformer model (only with required arguments)
 ./transformer transformer ../data/input.txt 32 8
 ```
 
+Example 3: transformer model (also with optional arguments)
+```
+./transformer ../data/input.txt 32 8 embedding_dims=10 num_attention_heads=2 num_attention_blocks=8 dropout_probs=0.2 seed_num=42 train_val_split_ratio=0.9 max_train_steps=10000 evaluation_interval=1000 loss_eval_iteration=100 num_tokens_to_generate=1000
+```
+
 To provide the optional arguments, following is the argument list:
 ```
 [REQUIRED] <model name>: Name of the model [bigram/transformer]
@@ -31,6 +36,7 @@ To provide the optional arguments, following is the argument list:
 [OPTIONAL] <dropout probs>: Percetange of dropout in the multi self-attention and feedforward layers, Default = 0.2
 [OPTIONAL] <seed num>: Seed number for the reproducibility, Default = 42
 [OPTIONAL] <train val split ratio>: Split ratio of train to validation dataset from input data, Default = 0.9
+[OPTIONAL] <max train steps>: Total number of training steps
 [OPTIONAL] <evaluation interval>: Interval of training steps at which loss evaluation is triggered for train/val dataset, Default = 1000
 [OPTIONAL] <loss eval iteration>: How many iteration to perform during loss evaluation, the mean over the iteration is reported, Default = 100
 [OPTIONAL] <num tokens to generate>: Once the training completes, how many tokens to generate (i.e., how many unique character to generate), Default = 1000

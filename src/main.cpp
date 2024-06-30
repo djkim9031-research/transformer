@@ -21,6 +21,7 @@ void print_help(const std::string& program_name) {
               << " [OPTIONAL] <dropout probs>: Percetange of dropout in the multi self-attention and feedforward layers, Default = 0.2\n"
               << " [OPTIONAL] <seed num>: Seed number for the reproducibility, Default = 42\n"
               << " [OPTIONAL] <train val split ratio>: Split ratio of train to validation dataset from input data, Default = 0.9\n"
+              << " [OPTIONAL] <max train steps>: Total number of training steps, Default = 10000\n"
               << " [OPTIONAL] <evaluation interval>: Interval of training steps at which loss evaluation is triggered for train/val dataset, Default = 1000\n"
               << " [OPTIONAL] <loss eval iteration>: How many iteration to perform during loss evaluation, the mean over the iteration is reported, Default = 100\n"
               << " [OPTIONAL] <num tokens to generate>: Once the training completes, how many tokens to generate (i.e., how many unique character to generate), Default = 1000\n"
@@ -47,6 +48,7 @@ int main(int argc, char** argv) {
     float dropout_probs = 0.2;
     int seed_num = 42;
     float train_val_split_ratio = 0.9;
+    int max_train_steps = 10000;
     int evaluation_interval = 1000;
     int loss_eval_iteration = 100;
     int num_tokens_to_generate = 1000;
@@ -82,6 +84,9 @@ int main(int argc, char** argv) {
     if (optional_params.find("train_val_split_ratio") != optional_params.end()) {
         train_val_split_ratio = std::stof(optional_params["train_val_split_ratio"]);
     }
+    if (optional_params.find("max_train_steps") != optional_params.end()) {
+        max_train_steps = std::stoi(optional_params["max_train_steps"]);
+    }
     if (optional_params.find("evaluation_interval") != optional_params.end()) {
         evaluation_interval = std::stoi(optional_params["evaluation_interval"]);
     }
@@ -103,8 +108,8 @@ int main(int argc, char** argv) {
             nn_models::transformer_training_pipeline(data_path, batch_size, context_win_size, 
                                                      embedding_dims, num_attention_heads, 
                                                      num_attention_blocks, dropout_probs, 
-                                                     seed_num, train_val_split_ratio, 
-                                                     evaluation_interval, loss_eval_iteration, 
+                                                     seed_num, train_val_split_ratio, max_train_steps,
+                                                     evaluation_interval, loss_eval_iteration,
                                                      num_tokens_to_generate);
         } else {
             std::cerr << "Unknown model name: " << model_name << std::endl;
