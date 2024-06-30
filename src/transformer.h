@@ -8,14 +8,14 @@
 
 namespace nn_models{
 
-    class SelfAttentionHead : public torch::nn::Module {
+    class SelfAttention : public torch::nn::Module {
         // Single head of self-attention
         public:
             torch::nn::Linear query{nullptr};
             torch::nn::Linear key{nullptr};
             torch::nn::Linear value{nullptr};
 
-            SelfAttentionHead(int embedding_dims, int head_dims, int context_win_size, int seed_num){
+            SelfAttention(int embedding_dims, int head_dims, int context_win_size, int seed_num){
                 torch::manual_seed(seed_num);
                 query = register_module("query", torch::nn::Linear(torch::nn::LinearOptions(embedding_dims, head_dims).bias(false)));
                 key = register_module("key", torch::nn::Linear(torch::nn::LinearOptions(embedding_dims, head_dims).bias(false)));
@@ -49,20 +49,44 @@ namespace nn_models{
             }
     };
 
+    class MultiHeadSelfAttention : public torch::nn::Module {
+        // Multi head self-attention.
+        // Running multiple singlehead self-attention in parallel and concatenate the outputs
+        // along head dimensions.
+        public:
+            std::vector<std::shared_ptr<SelfAttention>> attention_heads;
+
+            MultiHeadSelfAttention(int num_heads, int embedding_dims, int head_dims, int context_win_size, int seed_num){
+                torch::manual_seed(seed_num);
+                for(size_t i=0; i<num_heads; ++i){
+                    auto head = std::make_shared<SelfAttention>(embedding_dims, head_dims, context_win_size, seed_num);
+                    attention_heads.push_back(register_module("self_attention_" + std::to_string(i), head));
+                }
+            }
+
+            torch::Tensor forward(torch::Tensor& x){
+                std::vector<torch::Tensor> head_outputs;
+                for(auto& head : attention_heads){
+                    head_outputs.push_back(head->forward(x));
+                }
+                return torch::cat(head_outputs, /*dims=*/-1);
+            }
+    };
+
 
     class Transformer : public torch::nn::Module {
         public:
             torch::nn::Embedding token_embedding_table{nullptr};
             torch::nn::Embedding position_embedding_table{nullptr};
-            std::shared_ptr<SelfAttentionHead> sa_head;
+            std::shared_ptr<MultiHeadSelfAttention> at_heads;
             torch::nn::Linear lm_head{nullptr};
 
-            Transformer(int vocab_size, int context_win_size, int embedding_dims, int head_dims, int seed_num){
+            Transformer(int vocab_size, int context_win_size, int embedding_dims, int num_attention_heads, int head_dims, int seed_num){
                 torch::manual_seed(seed_num);
                 token_embedding_table = register_module("token_embedding_table", torch::nn::Embedding(vocab_size, embedding_dims));
                 position_embedding_table = register_module("position_embedding_table", torch::nn::Embedding(context_win_size, embedding_dims));
-                sa_head = register_module("sa_head", std::make_shared<SelfAttentionHead>(embedding_dims, head_dims, context_win_size, seed_num));
-                lm_head = register_module("linear_head", torch::nn::Linear(head_dims, vocab_size));
+                at_heads = register_module("attention_heads", std::make_shared<MultiHeadSelfAttention>(num_attention_heads, embedding_dims, head_dims, context_win_size, seed_num));
+                lm_head = register_module("linear_head", torch::nn::Linear(num_attention_heads*head_dims, vocab_size));
             }
 
             torch::Tensor forward(torch::Tensor &x, torch::Tensor &y, torch::Tensor &nll){
@@ -74,7 +98,7 @@ namespace nn_models{
                 auto pos_embeddings = position_embedding_table->forward(positions); // shape T, C1 (context, embedding_dims)
                 auto embedding_vectors = token_embeddings + pos_embeddings; // B, T, C1 (batch, context, embedding_dims)
 
-                auto attention_output = sa_head->forward(embedding_vectors); // B, T, H (batch, context, head_dims)
+                auto attention_output = at_heads->forward(embedding_vectors); // B, T, num_heads * H (batch, context, head_dims)
                 auto logits = lm_head->forward(attention_output); // Shape B, T, C2 (batch, context, vocab_size)
 
                 if (y.size(0) > 0){
