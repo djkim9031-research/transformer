@@ -15,7 +15,6 @@ namespace nn_models{
         int vocab_size;
         int embedding_dims = 32;
         int num_attention_heads = 4;
-        int attention_head_dims = 32;
         std::string text = preprocessing::data_parser(data_path, stoi, itos, vocab_size);
         
         // Encode the parsed data
@@ -27,7 +26,7 @@ namespace nn_models{
         preprocessing::split_dataset(train_val_split_ratio, data, train_data, val_data);
 
         // Construct the bigram language model
-        Transformer transfromer(vocab_size, context_win_size, embedding_dims, num_attention_heads, attention_head_dims, seed_num);
+        Transformer transfromer(vocab_size, context_win_size, embedding_dims, num_attention_heads, seed_num);
 
         // Training
         torch::optim::AdamW optimizer(transfromer.parameters(), torch::optim::AdamWOptions(1e-3));
