@@ -5,16 +5,21 @@ namespace nn_models{
     void transformer_training_pipeline(const std::string &data_path,
                                        const int batch_size,
                                        const int context_win_size,
+                                       const int embedding_dims,
+                                       const int num_attention_heads,
+                                       const int num_attention_blocks,
+                                       const float dropout_probs,
                                        const int seed_num,
                                        const float train_val_split_ratio,
-                                       const int max_training_step){
+                                       const int max_training_step,
+                                       const int evaluation_interval,
+                                       const int loss_eval_iter,
+                                       const int num_tokens_to_generate){
         
         // Parse the data
         std::unordered_map<char, int> stoi;
         std::unordered_map<int, char> itos;
         int vocab_size;
-        int embedding_dims = 32;
-        int num_attention_heads = 4;
         std::string text = preprocessing::data_parser(data_path, stoi, itos, vocab_size);
         
         // Encode the parsed data
@@ -26,7 +31,7 @@ namespace nn_models{
         preprocessing::split_dataset(train_val_split_ratio, data, train_data, val_data);
 
         // Construct the bigram language model
-        Transformer transfromer(vocab_size, context_win_size, embedding_dims, num_attention_heads, seed_num);
+        Transformer transfromer(vocab_size, context_win_size, embedding_dims, num_attention_heads, num_attention_blocks, dropout_probs, seed_num);
 
         // Training
         torch::optim::AdamW optimizer(transfromer.parameters(), torch::optim::AdamWOptions(1e-3));
@@ -42,18 +47,18 @@ namespace nn_models{
             loss.backward();
             optimizer.step();
             
-            if(step % 1000 == 0){
+            if(step % evaluation_interval == 0){
                 std::cout<<"[Step "<<step<<"] Training mean loss = "
-                <<evaluation(transfromer, train_data, 100, batch_size, context_win_size)<<std::endl;
+                <<evaluation(transfromer, train_data, loss_eval_iter, batch_size, context_win_size)<<std::endl;
                 std::cout<<"|__________ Evaluation mean loss = "
-                <<evaluation(transfromer, val_data, 100, batch_size, context_win_size)<<std::endl;
+                <<evaluation(transfromer, val_data, loss_eval_iter, batch_size, context_win_size)<<std::endl;
                 std::cout<<"________________________________________________________"<<std::endl;
             }
         }
 
         // Inference on the trained model.
         torch::Tensor init_data = torch::zeros({1, 1}, torch::kInt64);
-        auto inference_data = transfromer.generate(init_data, 100, context_win_size);
+        auto inference_data = transfromer.generate(init_data, num_tokens_to_generate, context_win_size);
         std::vector<int> inference_data_vectorized;
         for(size_t c=0; c<inference_data.size(1); ++c){
             inference_data_vectorized.push_back(inference_data[0][c].item<int>());

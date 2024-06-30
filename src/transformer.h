@@ -54,13 +54,17 @@ namespace nn_models{
         // along head dimensions.
         public:
             std::vector<std::shared_ptr<SelfAttention>> attention_heads;
+            torch::nn::Linear projection{nullptr};
+            torch::nn::Dropout dropout{nullptr};
 
-            MultiHeadSelfAttention(int num_heads, int embedding_dims, int head_dims, int context_win_size, int seed_num){
+            MultiHeadSelfAttention(int num_heads, int embedding_dims, int head_dims, int context_win_size, float dropout_prob, int seed_num){
                 torch::manual_seed(seed_num);
                 for(size_t i=0; i<num_heads; ++i){
                     auto head = std::make_shared<SelfAttention>(embedding_dims, head_dims, context_win_size, seed_num);
                     attention_heads.push_back(register_module("self_attention_" + std::to_string(i), head));
                 }
+                projection = register_module("projection", torch::nn::Linear(embedding_dims, embedding_dims));
+                dropout = register_module("dropout", torch::nn::Dropout(torch::nn::DropoutOptions().p(dropout_prob)));
             }
 
             torch::Tensor forward(torch::Tensor x){
@@ -68,7 +72,9 @@ namespace nn_models{
                 for(auto& head : attention_heads){
                     head_outputs.push_back(head->forward(x));
                 }
-                return torch::cat(head_outputs, /*dims=*/-1);
+                auto y = torch::cat(head_outputs, /*dims=*/-1);
+                y = projection->forward(y);
+                return dropout->forward(y);
             }
     };
 
@@ -78,11 +84,14 @@ namespace nn_models{
         public:
             torch::nn::Sequential net{nullptr};
 
-            FeedForward(int embedding_dims, int seed_num){
+            FeedForward(int embedding_dims, float dropout_prob, int seed_num){
                 torch::manual_seed(seed_num);
                 net = register_module("feedforward", torch::nn::Sequential(
-                                                            torch::nn::Linear(embedding_dims, embedding_dims),
-                                                            torch::nn::ReLU()
+                                                            // From the original paper, the inner layer has a multiplier of 4
+                                                            torch::nn::Linear(embedding_dims, 4*embedding_dims),
+                                                            torch::nn::ReLU(),
+                                                            torch::nn::Linear(4*embedding_dims, embedding_dims),
+                                                            torch::nn::Dropout(torch::nn::DropoutOptions().p(dropout_prob))
                                     ));
             }
 
@@ -96,17 +105,27 @@ namespace nn_models{
         public:
             std::shared_ptr<MultiHeadSelfAttention> at_heads{nullptr};
             std::shared_ptr<FeedForward> feed_forward{nullptr};
+            torch::nn::LayerNorm layer_norm1{nullptr};
+            torch::nn::LayerNorm layer_norm2{nullptr};
 
-            AttentionBlock(int num_heads, int embedding_dims, int context_win_size, int seed_num){
+            AttentionBlock(int num_heads, int embedding_dims, int context_win_size, float dropout_prob, int seed_num){
                 torch::manual_seed(seed_num);
-                at_heads = register_module("attention_heads", std::make_shared<MultiHeadSelfAttention>(num_heads, embedding_dims, embedding_dims/num_heads, context_win_size, seed_num));
-                feed_forward = register_module("feed_forward", std::make_shared<FeedForward>(embedding_dims, seed_num));
+                at_heads = register_module("attention_heads", std::make_shared<MultiHeadSelfAttention>(num_heads, embedding_dims, embedding_dims/num_heads, context_win_size, dropout_prob, seed_num));
+                feed_forward = register_module("feed_forward", std::make_shared<FeedForward>(embedding_dims, dropout_prob, seed_num));
+                layer_norm1 = register_module("layer_norm1", torch::nn::LayerNorm(torch::nn::LayerNormOptions({embedding_dims})));
+                layer_norm2 = register_module("layer_norm2", torch::nn::LayerNorm(torch::nn::LayerNormOptions({embedding_dims})));
             }
 
             torch::Tensor forward(torch::Tensor x){
-                auto y = at_heads->forward(x);
-                y = feed_forward->forward(y);
-                return y;
+                // Layer norms are applied prior to attention and feedforward.
+                // This is a deviation from the original paper, but the later research shows
+                // that this ensures training stability.
+                auto y1 = layer_norm1->forward(x);
+                y1 = x + at_heads->forward(y1);
+
+                auto y2 = layer_norm2->forward(y1);
+                y2 = y1 + feed_forward->forward(y2);
+                return y2;
             }
     };
 
@@ -118,16 +137,15 @@ namespace nn_models{
             torch::nn::Sequential attn_blocks{nullptr};
             torch::nn::Linear lm_head{nullptr};
 
-            Transformer(int vocab_size, int context_win_size, int embedding_dims, int num_attention_heads, int seed_num){
+            Transformer(int vocab_size, int context_win_size, int embedding_dims, int num_attention_heads, int num_attention_blocks, float dropout_prob, int seed_num){
                 torch::manual_seed(seed_num);
                 token_embedding_table = register_module("token_embedding_table", torch::nn::Embedding(vocab_size, embedding_dims));
                 position_embedding_table = register_module("position_embedding_table", torch::nn::Embedding(context_win_size, embedding_dims));
-                attn_blocks = register_module("attention_blocks", torch::nn::Sequential(
-                                                                         AttentionBlock(num_attention_heads, embedding_dims, context_win_size, seed_num),
-                                                                         AttentionBlock(num_attention_heads, embedding_dims, context_win_size, seed_num),
-                                                                         AttentionBlock(num_attention_heads, embedding_dims, context_win_size, seed_num),
-                                                                         AttentionBlock(num_attention_heads, embedding_dims, context_win_size, seed_num)
-                                            ));
+                attn_blocks = register_module("attention_blocks", torch::nn::Sequential());
+                for(size_t i=0; i<num_attention_blocks; ++i){
+                    attn_blocks->push_back(AttentionBlock(num_attention_heads, embedding_dims, context_win_size, dropout_prob, seed_num));
+                }
+                attn_blocks->push_back(torch::nn::LayerNorm(torch::nn::LayerNormOptions({embedding_dims})));
                 lm_head = register_module("linear_head", torch::nn::Linear(embedding_dims, vocab_size));
             }
 
@@ -195,9 +213,16 @@ namespace nn_models{
     void transformer_training_pipeline(const std::string &data_path,
                                        const int batch_size,
                                        const int context_win_size,
+                                       const int embedding_dims = 384,
+                                       const int num_attention_heads = 6,
+                                       const int num_attention_blocks = 8,
+                                       const float dropout_probs = 0.2,
                                        const int seed_num = 42,
                                        const float train_val_split_ratio = 0.9,
-                                       const int max_training_step = 10000);
+                                       const int max_training_step = 10000,
+                                       const int evaluation_interval = 1000,
+                                       const int loss_eval_iter = 100,
+                                       const int num_tokens_to_generate = 1000);
 
     // Loss evaluation logic, loss metrics against training and validataion data
     // are evaluated during training to check if a model overfits to the data. 
