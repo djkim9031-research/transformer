@@ -73,12 +73,32 @@ namespace nn_models{
             }
     };
 
+    class FeedForward : public torch::nn::Module {
+        // Feedforward network in the transformer
+        // A simple linear layer followed by non-linearity.
+        public:
+            torch::nn::Sequential net{nullptr};
+
+            FeedForward(int embedding_dims, int seed_num){
+                torch::manual_seed(seed_num);
+                net = register_module("feedforward", torch::nn::Sequential(
+                                                            torch::nn::Linear(embedding_dims, embedding_dims),
+                                                            torch::nn::ReLU()
+                      ));
+            }
+
+            torch::Tensor forward(torch::Tensor& x){
+                return net->forward(x);
+            }
+    };
+
 
     class Transformer : public torch::nn::Module {
         public:
             torch::nn::Embedding token_embedding_table{nullptr};
             torch::nn::Embedding position_embedding_table{nullptr};
-            std::shared_ptr<MultiHeadSelfAttention> at_heads;
+            std::shared_ptr<MultiHeadSelfAttention> at_heads{nullptr};
+            std::shared_ptr<FeedForward> feed_forward{nullptr};
             torch::nn::Linear lm_head{nullptr};
 
             Transformer(int vocab_size, int context_win_size, int embedding_dims, int num_attention_heads, int head_dims, int seed_num){
@@ -86,6 +106,7 @@ namespace nn_models{
                 token_embedding_table = register_module("token_embedding_table", torch::nn::Embedding(vocab_size, embedding_dims));
                 position_embedding_table = register_module("position_embedding_table", torch::nn::Embedding(context_win_size, embedding_dims));
                 at_heads = register_module("attention_heads", std::make_shared<MultiHeadSelfAttention>(num_attention_heads, embedding_dims, head_dims, context_win_size, seed_num));
+                feed_forward = register_module("feed_forward", std::make_shared<FeedForward>(num_attention_heads*head_dims, seed_num));
                 lm_head = register_module("linear_head", torch::nn::Linear(num_attention_heads*head_dims, vocab_size));
             }
 
@@ -99,7 +120,8 @@ namespace nn_models{
                 auto embedding_vectors = token_embeddings + pos_embeddings; // B, T, C1 (batch, context, embedding_dims)
 
                 auto attention_output = at_heads->forward(embedding_vectors); // B, T, num_heads * H (batch, context, head_dims)
-                auto logits = lm_head->forward(attention_output); // Shape B, T, C2 (batch, context, vocab_size)
+                auto logits = feed_forward->forward(attention_output); // B, T, num_heads * H
+                logits = lm_head->forward(logits); // Shape B, T, C2 (batch, context, vocab_size)
 
                 if (y.size(0) > 0){
                     int C = logits.size(2);
