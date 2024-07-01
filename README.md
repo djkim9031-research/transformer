@@ -20,7 +20,7 @@ Example 2: transformer model (only with required arguments)
 
 Example 3: transformer model (also with optional arguments)
 ```
-./transformer ../data/input.txt 32 8 embedding_dims=10 num_attention_heads=2 num_attention_blocks=8 dropout_probs=0.2 seed_num=42 train_val_split_ratio=0.9 max_train_steps=10000 evaluation_interval=1000 loss_eval_iteration=100 num_tokens_to_generate=1000
+./transformer transformer ../data/input.txt 64 100 embedding_dims=384 num_attention_heads=6 num_attention_blocks=8 dropout_probs=0.2 seed_num=42 train_val_split_ratio=0.9 max_train_steps=10000 evaluation_interval=1000 loss_eval_iteration=100 num_tokens_to_generate=1000
 ```
 
 To provide the optional arguments, following is the argument list:
