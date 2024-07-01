@@ -35,7 +35,7 @@ namespace nn_models{
                 // w = (q @ k.T)/sqrt(head_dims) from attention paper, to keep uniform variance
                 // [B, T, head_dims] x [B, head_dims, T] => [B, T, T]
                 auto w = torch::matmul(q, k.transpose(-2, -1)) * std::pow(H, -0.5);
-                torch::Tensor trill = torch::tril(torch::ones({T, T}));
+                torch::Tensor trill = torch::tril(torch::ones({T, T})).to(x.device());;
                 auto mask = trill.unsqueeze(0).expand({B, T, T});
                 w = w.masked_fill(mask.eq(0), -std::numeric_limits<float>::infinity());
                 w = torch::nn::functional::softmax(w, -1); // [B, T, T]
@@ -154,7 +154,7 @@ namespace nn_models{
                 int T = x.size(1);
 
                 auto token_embeddings = token_embedding_table->forward(x); // Shape B, T, C1 (batch, context, embedding_dims)
-                auto positions = torch::arange(0, T, torch::kLong); // Shape T (context_win_size)
+                auto positions = torch::arange(0, T, torch::kLong).to(x.device()); // Shape T (context_win_size)
                 auto pos_embeddings = position_embedding_table->forward(positions); // shape T, C1 (context, embedding_dims)
                 auto embedding_vectors = token_embeddings + pos_embeddings; // B, T, C1 (batch, context, embedding_dims)
 
@@ -222,7 +222,8 @@ namespace nn_models{
                                        const int max_training_step = 10000,
                                        const int evaluation_interval = 1000,
                                        const int loss_eval_iter = 100,
-                                       const int num_tokens_to_generate = 1000);
+                                       const int num_tokens_to_generate = 1000,
+                                       const torch::DeviceType device = torch::kCPU);
 
     // Loss evaluation logic, loss metrics against training and validataion data
     // are evaluated during training to check if a model overfits to the data. 
