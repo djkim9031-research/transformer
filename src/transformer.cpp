@@ -14,33 +14,38 @@ namespace nn_models{
                                        const int max_training_step,
                                        const int evaluation_interval,
                                        const int loss_eval_iter,
-                                       const int num_tokens_to_generate){
+                                       const int num_tokens_to_generate,
+                                       const torch::DeviceType device){
         
         // Parse the data
         std::unordered_map<char, int> stoi;
         std::unordered_map<int, char> itos;
         int vocab_size;
+        torch::Device run_device(device);
         std::string text = preprocessing::data_parser(data_path, stoi, itos, vocab_size);
         
         // Encode the parsed data
         std::vector<int> encoded_text = tokenizer::encode(text, stoi);
-        torch::Tensor data = torch::tensor(encoded_text, torch::dtype(torch::kInt64));
+        torch::Tensor data = torch::tensor(encoded_text, torch::dtype(torch::kInt64)).to(run_device);
         
         // Splitting the encoded data to train_data, and val_data
         torch::Tensor train_data, val_data;
         preprocessing::split_dataset(train_val_split_ratio, data, train_data, val_data);
-
-        // Construct the bigram language model
-        Transformer transfromer(vocab_size, context_win_size, embedding_dims, num_attention_heads, num_attention_blocks, dropout_probs, seed_num);
+        
+        // Construct the transformer model
+        Transformer transformer(vocab_size, context_win_size, embedding_dims, num_attention_heads, num_attention_blocks, dropout_probs, seed_num);
+        transformer.to(run_device);
 
         // Training
-        torch::optim::AdamW optimizer(transfromer.parameters(), torch::optim::AdamWOptions(1e-3));
+        torch::optim::AdamW optimizer(transformer.parameters(), torch::optim::AdamWOptions(1e-3));
         for(size_t step = 0; step < max_training_step; ++step){
             torch::Tensor xb, yb;
             preprocessing::create_batch(batch_size, context_win_size, train_data, xb, yb);
+            xb.to(run_device);
+            yb.to(run_device);
             
             torch::Tensor loss;
-            transfromer.forward(xb, yb, loss);
+            transformer.forward(xb, yb, loss);
 
             // backward pass
             optimizer.zero_grad();
@@ -49,9 +54,9 @@ namespace nn_models{
             
             if(step % evaluation_interval == 0){
                 std::cout<<"[Step "<<step<<"] Training mean loss = "
-                <<evaluation(transfromer, train_data, loss_eval_iter, batch_size, context_win_size)<<std::endl;
+                <<evaluation(transformer, train_data, loss_eval_iter, batch_size, context_win_size)<<std::endl;
                 std::cout<<"|__________ Evaluation mean loss = "
-                <<evaluation(transfromer, val_data, loss_eval_iter, batch_size, context_win_size)<<std::endl;
+                <<evaluation(transformer, val_data, loss_eval_iter, batch_size, context_win_size)<<std::endl;
                 std::cout<<"________________________________________________________"<<std::endl;
             }
         }
@@ -59,11 +64,11 @@ namespace nn_models{
         // Inference on the trained model.
         std::string inference_text = "First Citizen:\nMy good sir, I must ";
         encoded_text = tokenizer::encode(text, stoi);
-        torch::Tensor inference_tensors = torch::tensor(encoded_text, torch::dtype(torch::kInt64));
+        torch::Tensor inference_tensors = torch::tensor(encoded_text, torch::dtype(torch::kInt64)).to(run_device);
         torch::Tensor ignored, init_data;
         preprocessing::create_batch(1, context_win_size, inference_tensors, init_data, ignored);
 
-        auto inference_data = transfromer.generate(init_data, num_tokens_to_generate, context_win_size);
+        auto inference_data = transformer.generate(init_data, num_tokens_to_generate, context_win_size);
         std::vector<int> inference_data_vectorized;
         for(size_t c=0; c<inference_data.size(1); ++c){
             inference_data_vectorized.push_back(inference_data[0][c].item<int>());
