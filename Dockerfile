@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM nvidia/cuda:12.0.0-cudnn8-devel-ubuntu20.04
 
 # Set environment variables for locale
 ENV DEBIAN_FRONTEND=noninteractive
@@ -20,7 +20,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 ENV CXX=g++-9
-ENV CXX_STANDARD=17
+ENV CXX_STANDARD=14
 
 # Install Python packages
 RUN pip3 install numpy matplotlib
@@ -28,9 +28,9 @@ RUN pip3 install numpy matplotlib
 # Clone libtorch
 RUN mkdir /opt/libtorch && \
     cd /opt/libtorch && \
-    curl -L -o libtorch.zip https://download.pytorch.org/libtorch/nightly/cpu/libtorch-shared-with-deps-latest.zip && \
-    unzip libtorch.zip && \
-    rm libtorch.zip
+    curl -L -o libtorch-gpu.zip https://download.pytorch.org/libtorch/nightly/cu102/libtorch-cxx11-abi-shared-with-deps-1.13.0.dev20220929%2Bcu102.zip && \
+    unzip libtorch-gpu.zip && \
+    rm libtorch-gpu.zip
 
 # Set environment variables for libtorch
 ENV LIBTORCH_PATH=/opt/libtorch/libtorch
@@ -49,3 +49,4 @@ COPY . /code
 
 # Set the default command to bash
 CMD ["/bin/bash"]
+
