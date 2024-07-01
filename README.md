@@ -4,6 +4,22 @@ Recreation of a transformer architecture for sequential linearized inputs. Given
 This repo recreates the "Decoder" block of the transformer architecture, and also provides the baseline bigram model for reference.
 As the aim of the current transformer model is to have a "generative" capability based on input dataset, it is an auto regressive model and therefore, do not contain a cross-attention layer in the decoder block.
 
+## How to build
+If you opt to use docker, use ***nvidia-docker***
+
+Install dockerfile and run the docker volume
+```
+nvidia-docker build -t transformer:latest .
+nvidia-docker run -v ./:/code -it --name transformer_volume transformer:latest
+```
+
+Make bulid directory and navigate there to compile,
+```
+mkdir build && cd build
+cmake -DCMAKE_PREFIX_PATH=${LIBTORCH_PATH} ..
+make -j${nproc}
+```
+
 ## How to use
 
 After building the current repo, run the executable with the required arguments.
@@ -105,5 +121,5 @@ Could be better, but for the given compute resource sounds plausible 😅
 
 ## Disclaimer
 
-I only have CUDA GPU with compute 7.5 currently, and it does not support C++17. If more modern CUDA architecture is available, I believe C++ 17 is supported on nvcc compiler.
-
+Currently, I only have CUDA GPU with compute 7.5, and it does not support C++17. If more modern CUDA architecture is available, C++ 17 should work fine with nvcc compiler.
+If NVIDIA GPU is not available on your device then use libTorch nightly CPU version by updating the dockerfile accordingly.
