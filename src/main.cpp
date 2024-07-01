@@ -52,6 +52,7 @@ int main(int argc, char** argv) {
     int evaluation_interval = 1000;
     int loss_eval_iteration = 100;
     int num_tokens_to_generate = 1000;
+    torch::DeviceType device_type = torch::cuda::is_available() ? torch::kCUDA : torch::kCPU;
 
     // Optional parameters start from argv[5]
     std::map<std::string, std::string> optional_params;
@@ -105,6 +106,7 @@ int main(int argc, char** argv) {
                 std::cout << "Embedding dims % Num attention heads should be zero, terminnating..."<<std::endl;
                 return 1;
             }
+            std::cout <<"Transformer model running on "<<(torch::cuda::is_available() ? "CUDA" : "CPU")<<std::endl;
             nn_models::transformer_training_pipeline(data_path, batch_size, context_win_size, 
                                                      embedding_dims, num_attention_heads, 
                                                      num_attention_blocks, dropout_probs, 
@@ -123,3 +125,4 @@ int main(int argc, char** argv) {
 
     return 0;
 }
+
