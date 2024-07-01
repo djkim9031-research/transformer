@@ -57,13 +57,18 @@ namespace nn_models{
         }
 
         // Inference on the trained model.
-        torch::Tensor init_data = torch::zeros({1, 1}, torch::kInt64);
+        std::string inference_text = "First Citizen:\nMy good sir, I must ";
+        encoded_text = tokenizer::encode(text, stoi);
+        torch::Tensor inference_tensors = torch::tensor(encoded_text, torch::dtype(torch::kInt64));
+        torch::Tensor ignored, init_data;
+        preprocessing::create_batch(1, context_win_size, inference_tensors, init_data, ignored);
+
         auto inference_data = transfromer.generate(init_data, num_tokens_to_generate, context_win_size);
         std::vector<int> inference_data_vectorized;
         for(size_t c=0; c<inference_data.size(1); ++c){
             inference_data_vectorized.push_back(inference_data[0][c].item<int>());
         }
-        std::cout<<"Given: "<<tokenizer::decode({init_data[0][0].item<int>()}, itos)<<std::endl;
+        std::cout<<"Given: "<<inference_text<<std::endl;
         std::cout<<"Generated: "<<tokenizer::decode(inference_data_vectorized, itos)<<std::endl;
     }
 
