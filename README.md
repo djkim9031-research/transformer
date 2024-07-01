@@ -59,9 +59,14 @@ loss eval iteration: 100
 num tokens to generate: 1000
 ```
 
+Prompt:
 ```
-Prompt: "First Citizen:\nMy good sir, I must "
-Generated: "ng bought love with such a blood! without means with his dimpority.
+First Citizen:
+My good sir, I must
+```
+Generated:
+```
+ng bought love with such a blood! without means with his dimpority.
 
 RATCLIFF:
 As any thousand, I pray stay, these tender could have discoted
@@ -90,7 +95,7 @@ Even of her in majesty, and as thou
 shalt have assured tips of that
 That was your own colours
 He meets with weeds. I had got it not seem.
-Well, if in her l"
+Well, if in her l
 ```
 
 Could be better, but for the given compute resource sounds plausible 😅
