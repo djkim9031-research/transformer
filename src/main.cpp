@@ -112,7 +112,7 @@ int main(int argc, char** argv) {
                                                      num_attention_blocks, dropout_probs, 
                                                      seed_num, train_val_split_ratio, max_train_steps,
                                                      evaluation_interval, loss_eval_iteration,
-                                                     num_tokens_to_generate);
+                                                     num_tokens_to_generate, device_type);
         } else {
             std::cerr << "Unknown model name: " << model_name << std::endl;
             print_help(argv[0]);
