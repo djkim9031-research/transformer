@@ -7,6 +7,7 @@ As the aim of the current transformer model is to have a "generative" capability
 ## How to use
 
 After building the current repo, run the executable with the required arguments.
+If the CUDA device is available, it will automatically run on CUDA device.
 
 Example 1: bigram model
 ```
@@ -104,4 +105,5 @@ Could be better, but for the given compute resource sounds plausible 😅
 
 ## Disclaimer
 
-Current version is implemented on LibTorch CPU version, and the future implementation will support LibTorch GPU version.
+I only have CUDA GPU with compute 7.5 currently, and it does not support C++17. If more modern CUDA architecture is available, I believe C++ 17 is supported on nvcc compiler.
+
