@@ -63,11 +63,11 @@ To provide the optional arguments, following is the argument list:
 This is the example output when the transformer is trained with:
 ```
 batch size: 64
-context window length: 30
+context window length: 50
 embedding dimensions: 384
 number of attention heads: 6
 number of attention blocks (layers): 8
-drop out rate: 0.2
+drop out rate: 0.4
 seed number: 42
 train/val split ratio: 0.9
 max training steps: 10000
@@ -83,36 +83,44 @@ My good sir, I must
 ```
 Generated:
 ```
-ng bought love with such a blood! without means with his dimpority.
+thee,
+And all those friends that deign to follow it,
+Lest in the nexting husband. Now, let's seek
+us a touch'd time and noble increast!
+For rove and Mowbray's God's brother, show a man.
+Third is thus with thee: but your father, we say,
+Though thou departed Harry's brother, Warwick, that all the
+deed infant frowness of the other steeds and revokes.
 
-RATCLIFF:
-As any thousand, I pray stay, these tender could have discoted
-By commands the faction of his duteous is
-To sat her bridgetting tongue perceive
-To find thee.
+CORIOLANUS:
+Avaid it shallow me with me:
+Ah, I'll warrant thee. Poor Clarence so
+Can holumn and him.
 
-PETRUCHIO:
-Now, by Saint Clarence Henry Peter.
-Marcius was to punish the lords of sorrow
-And bath thee, my dear love.
+DUKE OF YORK:
+What, well, what never sat Lamentor, great:
+Now or his 'defermity can, she is known.
 
-PAULINA:
-Give me thy love as long such a true bankrd abulades on my
-name they, and goes the tyrant.
-And fellows it in his ditetted smiles;
-You'll be wenfully but say shame 'tis set an learness so witters I with mire
-Than a man in good birthrough in the duke,
-How not your presume to come it
-In corpost to lay it! I say, and then, holdest-blain,
-That will do it so. Do I send it hie to loved upon the common viners' bearing bloods: you
-righ'd you hast me leaved with
-him or shame.
-And folly the king; I fear his bones;
-Even of her in majesty, and as thou
-shalt have assured tips of that
-That was your own colours
-He meets with weeds. I had got it not seem.
-Well, if in her l
+AUTOLYCUS:
+A mOthacase; I would I do her untirely,
+Why happiness of grave author near to be?
+Farewell, Clifford.
+
+CAMILLO:
+If we be so righteously beheven of you.
+
+Provost:
+Marcuteously for this storeking mades,
+Were pierce-a-headed blow, will not under this wreck
+Was every true buttale; indeed, in this;
+From this true here comely chear good?
+
+ISABELLA:
+O pain chard-babe,--
+As we and gentlemen
+As in Crassugatro, as a fearm. Come, few, prithout,
+Your child, comfort pretty breaths let's 'gains
+
 ```
 
 Could be better, but for the given compute resource sounds plausible 😅
