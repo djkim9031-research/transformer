@@ -6,6 +6,7 @@ As the aim of the current transformer model is to have a "generative" capability
 
 ## How to build
 If you opt to use docker, use ***nvidia-docker***
+Ubuntu 20.04 with CUDA 12.0 or above is recommended.
 
 Install dockerfile and run the docker volume
 ```
@@ -128,6 +129,5 @@ Could be better, but for the given compute resource sounds plausible 😅
 
 
 ## Disclaimer
+Depending on your cuda toolkit version, you may have to change the first line of Dockerfile to your specific cuda version.
 
-Currently, I only have CUDA GPU with compute 7.5, and it does not support C++17. If more modern CUDA architecture is available, C++ 17 should work fine with nvcc compiler.
-If NVIDIA GPU is not available on your device then use libTorch nightly CPU version by updating the dockerfile accordingly.
