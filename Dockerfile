@@ -7,10 +7,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get install -y \
     build-essential \
-    cmake \
+    libssl-dev \
     git \
     g++-9 \
     gcc-9 \
+    wget \
     curl \
     unzip \
     libopencv-dev \
@@ -19,11 +20,15 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-ENV CXX=g++-9
-ENV CXX_STANDARD=14
-
 # Install Python packages
 RUN pip3 install numpy matplotlib
+
+# Install CMake 3.29.6
+RUN cd /opt && wget https://github.com/Kitware/CMake/releases/download/v3.29.6/cmake-3.29.6.tar.gz && \
+    tar -zxvf cmake-3.29.6.tar.gz && \
+    cd cmake-3.29.6 && \
+    ./bootstrap && \
+    make -j${nproc} && make install 
 
 # Clone libtorch
 RUN mkdir /opt/libtorch && \
@@ -49,4 +54,5 @@ COPY . /code
 
 # Set the default command to bash
 CMD ["/bin/bash"]
+
 
