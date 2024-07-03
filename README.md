@@ -5,7 +5,7 @@ This repo recreates the "Decoder" block of the transformer architecture, and als
 As the aim of the current transformer model is to have a "generative" capability based on input dataset, it is an auto regressive model and therefore, do not contain a cross-attention layer in the decoder block.
 
 ## How to build
-If you opt to use docker, use ***nvidia-docker***
+If you opt to use docker, use ***nvidia-docker***. <br></br>
 Ubuntu 20.04 with CUDA 12.0 or above is recommended.
 
 Install dockerfile and run the docker volume
